@@ -64,25 +64,11 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
         if (handler == null)
             throw new HandlerNotFoundException(handlerType);
 
-        // For streaming, we get the handler method and invoke it
-        // Note: Pipeline behaviors for streaming could be added in future versions
-        // but require more complex implementation due to IAsyncEnumerable nature
-        var handleMethod = handlerType.GetMethod(nameof(IStreamRequestHandler<IStreamRequest<TResponse>, TResponse>.HandleAsync));
-        var result = handleMethod?.Invoke(handler, [request, cancellationToken]);
-        
-        if (result is IAsyncEnumerable<TResponse> asyncEnumerable)
+        // Execute the streaming pipeline with behaviors
+        // This is where the magic happens - streaming behaviors can now wrap around stream operations
+        await foreach (var item in ExecuteStreamingPipelineAsync<TResponse>(request, handler, handlerType, cancellationToken))
         {
-            // Here's where the magic happens: we yield each item as it becomes available
-            // This allows the caller to start processing results immediately, even if
-            // the handler is still producing more results in the background
-            await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
-            {
-                yield return item;
-            }
-        }
-        else
-        {
-            throw new InvalidOperationException($"Handler method did not return IAsyncEnumerable<{responseType.Name}>");
+            yield return item;
         }
     }
 
@@ -99,17 +85,11 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
         if (handler == null)
             throw new HandlerNotFoundException(handlerType);
 
-        // For streaming, we get the handler method and invoke it
-        // Note: Pipeline behaviors for streaming could be added in future versions
-        // but require more complex implementation due to IAsyncEnumerable nature
         var handleMethod = handlerType.GetMethod(nameof(IStreamRequestHandler<IStreamRequest<object>, object>.HandleAsync));
         var result = handleMethod?.Invoke(handler, [request, cancellationToken]);
         
         if (result is IAsyncEnumerable<object> asyncEnumerable)
         {
-            // Here's where the magic happens: we yield each item as it becomes available
-            // This allows the caller to start processing results immediately, even if
-            // the handler is still producing more results in the background
             await foreach (var item in asyncEnumerable.WithCancellation(cancellationToken))
             {
                 yield return item;
@@ -137,7 +117,7 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
         
         await Task.WhenAll(tasks);
     }
-    
+
     /// <summary>
     /// Executes all registered request interceptors for the given request.
     /// This method provides a powerful extension point for request transformation and validation.
@@ -217,7 +197,7 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
                 if (behaviorHandleMethod == null) return currentHandler(ct);
                 
                 var nextDelegate = new RequestHandlerDelegate<TResponse>(currentHandler);
-                var result = behaviorHandleMethod.Invoke(behaviorObj, [request, nextDelegate, ct]);
+                var result = behaviorHandleMethod.Invoke(behaviorObj, new object[] { request, nextDelegate, ct });
                 return (Task<TResponse>)result!;
             };
         }
@@ -268,5 +248,73 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
         
         // Cast back from object - in production code, you'd want more robust type checking
         return (TResponse)currentResponseObj!;
+    }
+
+    /// <summary>
+    /// Executes the streaming processing pipeline including all registered streaming behaviors.
+    /// This is the heart of streaming operations - where cross-cutting concerns like logging,
+    /// retry logic, and circuit breaking are applied to continuous data flows.
+    /// 
+    /// The key insight here is that streaming behaviors work fundamentally differently
+    /// from regular behaviors because they operate on IAsyncEnumerable rather than single values.
+    /// Each behavior in the chain can transform, filter, or enrich the stream of data
+    /// as it flows through the pipeline.
+    /// </summary>
+    private async IAsyncEnumerable<TResponse> ExecuteStreamingPipelineAsync<TResponse>(
+        IStreamRequest<TResponse> request, 
+        object handler, 
+        Type handlerType, 
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var requestType = request.GetType();
+        var responseType = typeof(TResponse);
+        
+        // Get streaming pipeline behaviors - these are specialized for stream operations
+        var behaviorType = typeof(IStreamPipelineBehavior<,>).MakeGenericType(requestType, responseType);
+        var behaviorObjects = serviceFactoryCollection(behaviorType).ToList();
+
+        // Build the streaming pipeline starting with the actual handler at the core
+        // This creates a nested structure where each behavior wraps the next one in the chain
+        StreamRequestHandlerDelegate<TResponse> handlerDelegate = (ct) =>
+        {
+            var handleMethod = handlerType.GetMethod(nameof(IStreamRequestHandler<IStreamRequest<TResponse>, TResponse>.HandleAsync));
+            var result = handleMethod?.Invoke(handler, [request, ct]);
+            
+            if (result is IAsyncEnumerable<TResponse> asyncEnumerable)
+            {
+                return asyncEnumerable;
+            }
+            
+            throw new InvalidOperationException($"Handler method did not return IAsyncEnumerable<{responseType.Name}>");
+        };
+
+        // Wrap the handler with streaming behaviors in reverse order
+        // This creates a chain where the outer behavior executes first and can control the inner behaviors
+        // For streaming, this means outer behaviors see the complete stream and can apply transformations
+        foreach (var behaviorObj in behaviorObjects.AsEnumerable().Reverse())
+        {
+            var currentHandler = handlerDelegate;
+            handlerDelegate = (ct) =>
+            {
+                // Use reflection to call the HandleAsync method on the streaming behavior
+                var behaviorHandleMethod = behaviorObj.GetType().GetMethod("HandleAsync");
+                if (behaviorHandleMethod == null) return currentHandler(ct);
+                
+                // Create a delegate that represents the next handler in the streaming pipeline
+                var nextDelegate = new StreamRequestHandlerDelegate<TResponse>(currentHandler);
+                    
+                // Invoke the behavior's HandleAsync method and return the resulting stream
+                var result = behaviorHandleMethod.Invoke(behaviorObj, new object[] { request, nextDelegate, ct });
+                return (IAsyncEnumerable<TResponse>)result!;
+            };
+        }
+
+        // Execute the complete pipeline and yield each item as it becomes available
+        // This is where the streaming magic happens - data flows through all behaviors
+        // and reaches the caller immediately, without buffering the entire result set
+        await foreach (var item in handlerDelegate(cancellationToken))
+        {
+            yield return item;
+        }
     }
 }

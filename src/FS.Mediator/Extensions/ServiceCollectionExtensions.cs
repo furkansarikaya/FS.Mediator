@@ -1,5 +1,6 @@
 using System.Reflection;
 using FS.Mediator.Behaviors;
+using FS.Mediator.Behaviors.Streaming;
 using FS.Mediator.Core;
 using FS.Mediator.Implementation;
 using FS.Mediator.Models.Enums;
@@ -142,7 +143,7 @@ public static class ServiceCollectionExtensions
                 options.Strategy = RetryStrategy.ExponentialBackoffWithJitter;
                 options.MaxTotalRetryTime = TimeSpan.FromSeconds(45);
                 options.ShouldRetryPredicate = ex =>
-                    ex is HttpRequestException ||
+                    ex is System.Net.Http.HttpRequestException ||
                     ex is TaskCanceledException ||
                     ex is System.Net.Sockets.SocketException ||
                     (ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase)) ||
@@ -251,6 +252,182 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(new PerformanceBehaviorOptions { WarningThresholdMs = warningThresholdMs });
         return services.AddPipelineBehavior(typeof(PerformanceBehavior<,>));
+    }
+
+    #endregion
+
+    #region Streaming Pipeline Behaviors
+
+    /// <summary>
+    /// Adds a streaming pipeline behavior to the service collection.
+    /// Streaming behaviors are executed in the order they are registered and provide
+    /// cross-cutting concerns specifically designed for stream operations like logging,
+    /// retry logic, and performance monitoring for continuous data flows.
+    /// 
+    /// The key difference from regular behaviors is that streaming behaviors work with
+    /// IAsyncEnumerable flows rather than single request/response pairs.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="behaviorType">The type of streaming behavior to add.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingPipelineBehavior(this IServiceCollection services, Type behaviorType)
+    {
+        services.AddTransient(typeof(IStreamPipelineBehavior<,>), behaviorType);
+        return services;
+    }
+
+    /// <summary>
+    /// Adds streaming logging behavior to the pipeline.
+    /// This behavior provides specialized logging for stream operations, including:
+    /// - Stream initiation and completion logging
+    /// - Periodic progress updates (configurable by item count or time intervals)
+    /// - Performance metrics (items per second, total duration)
+    /// - Error tracking and failure analysis
+    /// 
+    /// Unlike regular request logging, streaming logging is designed to handle
+    /// long-running operations that process thousands or millions of items without
+    /// overwhelming your log files.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize logging behavior.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingLoggingBehavior(this IServiceCollection services,
+        Action<StreamingLoggingOptions>? configureOptions = null)
+    {
+        var options = new StreamingLoggingOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddStreamingPipelineBehavior(typeof(StreamingLoggingBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds streaming retry behavior to the pipeline.
+    /// This behavior implements intelligent retry logic specifically designed for streaming operations:
+    /// 
+    /// Key features:
+    /// - Handles partial stream failures (stream yields some items then fails)
+    /// - Configurable retry strategies (restart from beginning vs resume from failure point)
+    /// - Intelligent backoff algorithms to avoid overwhelming failing systems
+    /// - Time-based circuit breaking to prevent infinite retry loops
+    /// 
+    /// Streaming retry is fundamentally different from regular request retry because
+    /// streams can partially succeed. A stream that yields 1000 items then fails might
+    /// be worth retrying, but reprocessing those 1000 items might be expensive.
+    /// This behavior provides strategies to handle these scenarios efficiently.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize retry behavior.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingRetryBehavior(this IServiceCollection services,
+        Action<StreamingRetryOptions>? configureOptions = null)
+    {
+        var options = new StreamingRetryOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddStreamingPipelineBehavior(typeof(StreamingRetryBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds streaming circuit breaker behavior to the pipeline.
+    /// This behavior implements circuit breaker pattern specifically for streaming operations:
+    /// 
+    /// Key features:
+    /// - Stream-level failure tracking (tracks failed streams, not individual items)
+    /// - Partial success consideration (streams that yield many items before failing)
+    /// - Longer time windows (streaming operations typically run longer than regular requests)
+    /// - Conservative trial periods (fewer test streams during recovery)
+    /// 
+    /// Streaming circuit breakers protect your system from cascade failures caused by
+    /// problematic stream operations. They're especially valuable when streaming from
+    /// external APIs, databases, or file systems that might become unavailable.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize circuit breaker behavior.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingCircuitBreakerBehavior(this IServiceCollection services,
+        Action<StreamingCircuitBreakerOptions>? configureOptions = null)
+    {
+        var options = new StreamingCircuitBreakerOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddStreamingPipelineBehavior(typeof(StreamingCircuitBreakerBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds streaming performance monitoring behavior to the pipeline.
+    /// This behavior monitors streaming operations for performance issues:
+    /// 
+    /// Key metrics tracked:
+    /// - Time to first item (how quickly does the stream start producing results?)
+    /// - Throughput (items per second - is the stream processing data efficiently?)
+    /// - Total duration (is the stream taking longer than expected?)
+    /// - Progress tracking (periodic performance checks during long operations)
+    /// 
+    /// This is invaluable for identifying bottlenecks in streaming operations.
+    /// Slow streams can impact user experience and system resources, so monitoring
+    /// helps you optimize performance and set appropriate expectations.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize performance monitoring.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingPerformanceBehavior(this IServiceCollection services,
+        Action<StreamingPerformanceOptions>? configureOptions = null)
+    {
+        var options = new StreamingPerformanceOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddStreamingPipelineBehavior(typeof(StreamingPerformanceBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds a complete streaming resilience package with sensible defaults.
+    /// This is a convenience method that adds logging, retry, circuit breaker, and
+    /// performance monitoring behaviors with configurations optimized for most streaming scenarios.
+    /// 
+    /// Think of this as your "streaming safety net" - it provides comprehensive
+    /// protection and monitoring for streaming operations without requiring you
+    /// to understand all the individual configuration options upfront.
+    /// 
+    /// The included behaviors work together to provide:
+    /// - Comprehensive visibility (logging and performance monitoring)
+    /// - Fault tolerance (retry and circuit breaker)
+    /// - Optimal performance (intelligent retry strategies and performance tracking)
+    /// </summary>
+    /// <param name="services">The service collection to add behaviors to.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingResiliencePackage(this IServiceCollection services)
+    {
+        return services
+            .AddStreamingLoggingBehavior(options =>
+            {
+                options.LogProgressEveryNItems = 1000;      // Log every 1000 items
+                options.LogProgressEveryNSeconds = 30;       // Log every 30 seconds
+                options.LogDetailedMetrics = true;           // Include performance metrics
+            })
+            .AddStreamingRetryBehavior(options =>
+            {
+                options.MaxRetryAttempts = 2;                // 3 total attempts (1 initial + 2 retries)
+                options.InitialDelay = TimeSpan.FromSeconds(2);
+                options.RetryStrategy = RetryStrategy.ExponentialBackoff;
+                options.MaxTotalRetryTime = TimeSpan.FromMinutes(5);
+            })
+            .AddStreamingCircuitBreakerBehavior(options =>
+            {
+                options.FailureThresholdPercentage = 60.0;   // Higher tolerance for streams
+                options.MinimumThroughput = 3;               // Fewer samples needed
+                options.SamplingDuration = TimeSpan.FromMinutes(5);
+                options.DurationOfBreak = TimeSpan.FromMinutes(2);
+            })
+            .AddStreamingPerformanceBehavior(options =>
+            {
+                options.TimeToFirstItemWarningMs = 5000;     // Warn if first item takes > 5 seconds
+                options.MinimumThroughputItemsPerSecond = 10; // Warn if < 10 items/second
+                options.ThroughputCheckIntervalSeconds = 30;  // Check performance every 30 seconds
+            });
     }
 
     #endregion
