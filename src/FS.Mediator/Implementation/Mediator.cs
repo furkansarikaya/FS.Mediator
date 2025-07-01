@@ -5,8 +5,15 @@ using FS.Mediator.Exceptions;
 namespace FS.Mediator.Implementation;
 
 /// <summary>
-/// Default implementation of the IMediator interface.
-/// Provides request/response and notification publishing capabilities with pipeline behavior support.
+/// Enhanced implementation of the IMediator interface with interceptor support.
+/// This implementation provides a sophisticated request processing pipeline that includes:
+/// 
+/// 1. Request Interception: Transforms or validates requests before processing
+/// 2. Pipeline Behaviors: Cross-cutting concerns like logging, retry, circuit breaking
+/// 3. Handler Execution: The actual business logic processing
+/// 4. Response Interception: Transforms or enriches responses before returning
+/// 
+/// This layered approach provides maximum flexibility while maintaining clean separation of concerns.
 /// </summary>
 public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection serviceFactoryCollection) : IMediator
 {
@@ -23,38 +30,19 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
         if (handler == null)
             throw new HandlerNotFoundException(handlerType);
 
-        // Get pipeline behaviors - Fix: Use correct generic type parameters
-        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
-        var behaviorObjects = serviceFactoryCollection(behaviorType).ToList();
+        // Step 1: Execute Request Interceptors
+        // These run first and can transform or validate the incoming request
+        var interceptedRequest = await ExecuteRequestInterceptorsAsync<IRequest<TResponse>, TResponse>(request, cancellationToken);
 
-        // Build pipeline starting with the actual handler
-        RequestHandlerDelegate<TResponse> handlerDelegate = (ct) =>
-        {
-            var handleMethod = handlerType.GetMethod(nameof(IRequestHandler<IRequest<TResponse>, TResponse>.HandleAsync));
-            var result = handleMethod?.Invoke(handler, [request, ct]);
-            return (Task<TResponse>)result!;
-        };
+        // Step 2: Build and Execute Pipeline with Behaviors
+        // This is where cross-cutting concerns like retry, circuit breaking, and logging happen
+        var response = await ExecutePipelineAsync<TResponse>(interceptedRequest, handler, handlerType, cancellationToken);
 
-        // Execute behaviors in reverse order using reflection
-        // This approach avoids the generic casting issue by working with reflection throughout
-        foreach (var behaviorObj in behaviorObjects.AsEnumerable().Reverse())
-        {
-            var currentHandler = handlerDelegate;
-            handlerDelegate = (ct) =>
-            {
-                // Use reflection to call the HandleAsync method on the behavior
-                var behaviorHandleMethod = behaviorObj.GetType().GetMethod("HandleAsync");
-                if (behaviorHandleMethod == null) return currentHandler(ct);
-                // Create a delegate that represents the next handler in the pipeline
-                var nextDelegate = new RequestHandlerDelegate<TResponse>(currentHandler);
-                    
-                // Invoke the behavior's HandleAsync method
-                var result = behaviorHandleMethod.Invoke(behaviorObj, new object[] { request, nextDelegate, ct });
-                return (Task<TResponse>)result!;
-            };
-        }
+        // Step 3: Execute Response Interceptors
+        // These run last and can transform or enrich the outgoing response
+        var interceptedResponse = await ExecuteResponseInterceptorsAsync(interceptedRequest, response, cancellationToken);
 
-        return await handlerDelegate(cancellationToken);
+        return interceptedResponse;
     }
 
     /// <inheritdoc />
@@ -148,5 +136,137 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
         var tasks = handlers.Select(handler => handler.HandleAsync(notification, cancellationToken));
         
         await Task.WhenAll(tasks);
+    }
+    
+    /// <summary>
+    /// Executes all registered request interceptors for the given request.
+    /// This method provides a powerful extension point for request transformation and validation.
+    /// </summary>
+    private async Task<TRequest> ExecuteRequestInterceptorsAsync<TRequest, TResponse>(TRequest request, CancellationToken cancellationToken)
+        where TRequest : IRequest<TResponse>
+    {
+        var requestType = typeof(TRequest);
+        var responseType = typeof(TResponse);
+        
+        // Get typed interceptors first - these are the most specific and run first
+        var typedInterceptorType = typeof(IRequestInterceptor<,>).MakeGenericType(requestType, responseType);
+        var typedInterceptors = serviceFactoryCollection(typedInterceptorType);
+        
+        var currentRequest = request;
+        
+        // Execute typed interceptors in registration order
+        foreach (var interceptor in typedInterceptors)
+        {
+            var interceptMethod = typedInterceptorType.GetMethod(nameof(IRequestInterceptor<TRequest, TResponse>.InterceptRequestAsync));
+            var result = interceptMethod?.Invoke(interceptor, [currentRequest, cancellationToken]);
+            if (result is Task<TRequest> task)
+            {
+                currentRequest = await task;
+            }
+        }
+        
+        // Get global interceptors and execute them after typed interceptors
+        var globalInterceptors = serviceFactoryCollection(typeof(IGlobalRequestInterceptor))
+            .Cast<IGlobalRequestInterceptor>()
+            .Where(gi => gi.ShouldIntercept(requestType));
+        
+        object currentRequestObj = currentRequest;
+        foreach (var globalInterceptor in globalInterceptors)
+        {
+            currentRequestObj = await globalInterceptor.InterceptRequestAsync(currentRequestObj, cancellationToken);
+        }
+        
+        // The global interceptors work with objects, so we need to cast back
+        // In a real implementation, you might want to add type safety checks here
+        return (TRequest)currentRequestObj;
+    }
+
+    /// <summary>
+    /// Executes the main processing pipeline including all registered behaviors.
+    /// This is where the core mediator pattern happens, with cross-cutting concerns applied.
+    /// </summary>
+    private async Task<TResponse> ExecutePipelineAsync<TResponse>(
+        IRequest<TResponse> request, 
+        object handler, 
+        Type handlerType, 
+        CancellationToken cancellationToken)
+    {
+        var requestType = request.GetType();
+        var responseType = typeof(TResponse);
+        
+        // Get pipeline behaviors - these provide cross-cutting concerns
+        var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, responseType);
+        var behaviorObjects = serviceFactoryCollection(behaviorType).ToList();
+
+        // Build the pipeline starting with the actual handler at the core
+        RequestHandlerDelegate<TResponse> handlerDelegate = (ct) =>
+        {
+            var handleMethod = handlerType.GetMethod(nameof(IRequestHandler<IRequest<TResponse>, TResponse>.HandleAsync));
+            var result = handleMethod?.Invoke(handler, [request, ct]);
+            return (Task<TResponse>)result!;
+        };
+
+        // Wrap the handler with behaviors in reverse order (last registered behavior wraps first)
+        // This creates a nested structure where each behavior can call the next one in the chain
+        foreach (var behaviorObj in behaviorObjects.AsEnumerable().Reverse())
+        {
+            var currentHandler = handlerDelegate;
+            handlerDelegate = (ct) =>
+            {
+                var behaviorHandleMethod = behaviorObj.GetType().GetMethod("HandleAsync");
+                if (behaviorHandleMethod == null) return currentHandler(ct);
+                
+                var nextDelegate = new RequestHandlerDelegate<TResponse>(currentHandler);
+                var result = behaviorHandleMethod.Invoke(behaviorObj, [request, nextDelegate, ct]);
+                return (Task<TResponse>)result!;
+            };
+        }
+
+        return await handlerDelegate(cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes all registered response interceptors for the given response.
+    /// This method provides the final opportunity to transform or enrich responses.
+    /// </summary>
+    private async Task<TResponse> ExecuteResponseInterceptorsAsync<TRequest, TResponse>(
+        TRequest request, 
+        TResponse response, 
+        CancellationToken cancellationToken)
+        where TRequest : IRequest<TResponse>
+    {
+        var requestType = typeof(TRequest);
+        var responseType = typeof(TResponse);
+        
+        // Get typed interceptors first - these are the most specific
+        var typedInterceptorType = typeof(IResponseInterceptor<,>).MakeGenericType(requestType, responseType);
+        var typedInterceptors = serviceFactoryCollection(typedInterceptorType);
+        
+        var currentResponse = response;
+        
+        // Execute typed interceptors in registration order
+        foreach (var interceptor in typedInterceptors)
+        {
+            var interceptMethod = typedInterceptorType.GetMethod(nameof(IResponseInterceptor<TRequest, TResponse>.InterceptResponseAsync));
+            var result = interceptMethod?.Invoke(interceptor, [request, currentResponse, cancellationToken]);
+            if (result is Task<TResponse> task)
+            {
+                currentResponse = await task;
+            }
+        }
+        
+        // Get global interceptors and execute them after typed interceptors
+        var globalInterceptors = serviceFactoryCollection(typeof(IGlobalResponseInterceptor))
+            .Cast<IGlobalResponseInterceptor>()
+            .Where(gi => gi.ShouldIntercept(requestType, responseType));
+        
+        object? currentResponseObj = currentResponse;
+        foreach (var globalInterceptor in globalInterceptors)
+        {
+            currentResponseObj = await globalInterceptor.InterceptResponseAsync(request, currentResponseObj, cancellationToken);
+        }
+        
+        // Cast back from object - in production code, you'd want more robust type checking
+        return (TResponse)currentResponseObj!;
     }
 }
