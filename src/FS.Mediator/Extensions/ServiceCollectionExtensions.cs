@@ -1,6 +1,7 @@
 using System.Reflection;
 using FS.Mediator.Behaviors;
 using FS.Mediator.Behaviors.Streaming;
+using FS.Mediator.Behaviors.Streaming.Diagnostics;
 using FS.Mediator.Core;
 using FS.Mediator.Implementation;
 using FS.Mediator.Models.Enums;
@@ -252,6 +253,195 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(new PerformanceBehaviorOptions { WarningThresholdMs = warningThresholdMs });
         return services.AddPipelineBehavior(typeof(PerformanceBehavior<,>));
+    }
+
+    #endregion
+
+    #region Diagnostics and Health Check Behaviors
+
+    /// <summary>
+    /// Adds comprehensive health check and diagnostics behavior to the streaming pipeline.
+    /// 
+    /// This behavior implements a sophisticated health monitoring system that provides
+    /// real-time insights into streaming operation health and performance. Think of it
+    /// as adding a "medical monitoring system" to your streams that continuously
+    /// checks vital signs and alerts you to potential issues.
+    /// 
+    /// Key monitoring capabilities:
+    /// - Performance tracking (throughput, latency, resource usage)
+    /// - Health status assessment with configurable thresholds
+    /// - Memory pressure detection and optional automatic management
+    /// - Stall detection for streams that stop producing data
+    /// - Integration with monitoring systems through IStreamHealthReporter
+    /// 
+    /// This is particularly valuable for:
+    /// - Long-running data processing operations
+    /// - Critical business processes that need reliability monitoring
+    /// - Production systems where early problem detection is essential
+    /// - Performance optimization and capacity planning
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize health monitoring behavior.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingHealthCheckBehavior(this IServiceCollection services,
+        Action<HealthCheckBehaviorOptions>? configureOptions = null)
+    {
+        // Create and configure health check options
+        var options = new HealthCheckBehaviorOptions();
+        configureOptions?.Invoke(options);
+        
+        // Register the configured options as a singleton so all behavior instances share the same configuration
+        services.AddSingleton(options);
+        
+        // Register the default health reporter if no custom one is already registered
+        // This provides out-of-the-box functionality that works with standard .NET logging
+        services.TryAddScoped<IStreamHealthReporter, LoggingHealthReporter>();
+        
+        // Register the health check behavior in the streaming pipeline
+        return services.AddStreamingPipelineBehavior(typeof(HealthCheckBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds health check behavior with a custom health reporter implementation.
+    /// 
+    /// This overload allows you to specify exactly which health reporting service to use,
+    /// which is valuable when integrating with specific monitoring systems like
+    /// Application Insights, Prometheus, Datadog, or custom monitoring solutions.
+    /// 
+    /// The custom reporter gives you full control over how health metrics are
+    /// collected, formatted, and sent to your monitoring infrastructure.
+    /// </summary>
+    /// <typeparam name="THealthReporter">The type of health reporter to use for monitoring integration.</typeparam>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize health monitoring behavior.</param>
+    /// <param name="reporterLifetime">The service lifetime for the health reporter (default is Scoped).</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingHealthCheckBehavior<THealthReporter>(
+        this IServiceCollection services,
+        Action<HealthCheckBehaviorOptions>? configureOptions = null,
+        ServiceLifetime reporterLifetime = ServiceLifetime.Scoped)
+        where THealthReporter : class, IStreamHealthReporter
+    {
+        // Configure health check options
+        var options = new HealthCheckBehaviorOptions();
+        configureOptions?.Invoke(options);
+        services.AddSingleton(options);
+        
+        // Register the custom health reporter with specified lifetime
+        services.Add(new ServiceDescriptor(typeof(IStreamHealthReporter), typeof(THealthReporter), reporterLifetime));
+        
+        // Register the health check behavior
+        return services.AddStreamingPipelineBehavior(typeof(HealthCheckBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds health check behavior with a factory-created health reporter.
+    /// 
+    /// This overload is perfect for scenarios where your health reporter needs
+    /// complex initialization, external configuration, or depends on services
+    /// that aren't easily resolved through standard DI patterns.
+    /// 
+    /// For example, if your health reporter needs API keys, connection strings,
+    /// or other configuration that's loaded at runtime, the factory pattern
+    /// gives you complete control over the initialization process.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="healthReporterFactory">Factory function to create the health reporter instance.</param>
+    /// <param name="configureOptions">Optional configuration action to customize health monitoring behavior.</param>
+    /// <param name="reporterLifetime">The service lifetime for the health reporter (default is Scoped).</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingHealthCheckBehavior(
+        this IServiceCollection services,
+        Func<IServiceProvider, IStreamHealthReporter> healthReporterFactory,
+        Action<HealthCheckBehaviorOptions>? configureOptions = null,
+        ServiceLifetime reporterLifetime = ServiceLifetime.Scoped)
+    {
+        // Configure health check options
+        var options = new HealthCheckBehaviorOptions();
+        configureOptions?.Invoke(options);
+        services.AddSingleton(options);
+        
+        // Register the health reporter using the factory
+        services.Add(new ServiceDescriptor(typeof(IStreamHealthReporter), healthReporterFactory, reporterLifetime));
+        
+        // Register the health check behavior
+        return services.AddStreamingPipelineBehavior(typeof(HealthCheckBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds health check behavior with predefined configuration optimized for common scenarios.
+    /// 
+    /// These presets provide battle-tested configurations that work well for typical
+    /// streaming scenarios, eliminating the need to understand all the individual
+    /// configuration options upfront. Each preset is optimized for different types
+    /// of streaming operations and their characteristic performance patterns.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="preset">The preset configuration optimized for specific scenarios.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingHealthCheckBehavior(this IServiceCollection services, HealthCheckPreset preset)
+    {
+        return preset switch
+        {
+            HealthCheckPreset.HighPerformance => services.AddStreamingHealthCheckBehavior(options =>
+            {
+                // Optimized for high-throughput, low-latency streaming operations
+                options.HealthCheckIntervalSeconds = 5;           // Frequent monitoring for quick issue detection
+                options.StallDetectionThresholdSeconds = 10;     // Quick stall detection for real-time operations
+                options.MinimumThroughputItemsPerSecond = 1000;  // High throughput expectation
+                options.MemoryGrowthThresholdBytes = 50_000_000; // 50MB threshold for memory-intensive operations
+                options.MaximumErrorRate = 0.01;                 // Very low error tolerance (1%)
+                options.AutoTriggerGarbageCollection = true;     // Aggressive memory management
+            }),
+            
+            HealthCheckPreset.DataProcessing => services.AddStreamingHealthCheckBehavior(options =>
+            {
+                // Optimized for batch data processing operations (ETL, data migration, etc.)
+                options.HealthCheckIntervalSeconds = 30;         // Less frequent checks for batch operations
+                options.StallDetectionThresholdSeconds = 120;    // Allow longer pauses for complex processing
+                options.MinimumThroughputItemsPerSecond = 50;    // Moderate throughput expectation
+                options.MemoryGrowthThresholdBytes = 200_000_000; // 200MB threshold for data-heavy operations
+                options.MaximumErrorRate = 0.05;                 // Moderate error tolerance (5%)
+                options.IncludeDetailedMemoryStats = true;       // Detailed monitoring for optimization
+            }),
+            
+            HealthCheckPreset.LongRunning => services.AddStreamingHealthCheckBehavior(options =>
+            {
+                // Optimized for long-running, overnight batch jobs
+                options.HealthCheckIntervalSeconds = 60;         // Hourly detailed checks
+                options.StallDetectionThresholdSeconds = 300;    // 5-minute stall tolerance
+                options.MinimumThroughputItemsPerSecond = 10;    // Lower throughput expectation
+                options.MemoryGrowthThresholdBytes = 500_000_000; // 500MB threshold for long operations
+                options.MaximumErrorRate = 0.1;                  // Higher error tolerance (10%)
+                options.AutoTriggerGarbageCollection = false;    // Let GC handle its own timing
+                options.IncludeDetailedMemoryStats = true;       // Full diagnostics for analysis
+            }),
+            
+            HealthCheckPreset.RealTime => services.AddStreamingHealthCheckBehavior(options =>
+            {
+                // Optimized for real-time, user-facing streaming operations
+                options.HealthCheckIntervalSeconds = 2;          // Very frequent monitoring
+                options.StallDetectionThresholdSeconds = 5;      // Immediate stall detection
+                options.MinimumThroughputItemsPerSecond = 100;   // Consistent throughput expectation
+                options.MemoryGrowthThresholdBytes = 25_000_000; // 25MB threshold for memory sensitivity
+                options.MaximumErrorRate = 0.001;               // Extremely low error tolerance (0.1%)
+                options.AutoTriggerGarbageCollection = true;     // Proactive memory management
+            }),
+            
+            HealthCheckPreset.Development => services.AddStreamingHealthCheckBehavior(options =>
+            {
+                // Optimized for development and testing scenarios
+                options.HealthCheckIntervalSeconds = 10;         // Moderate monitoring frequency
+                options.StallDetectionThresholdSeconds = 30;     // Reasonable stall detection
+                options.MinimumThroughputItemsPerSecond = 1;     // Very low throughput requirement
+                options.MemoryGrowthThresholdBytes = 100_000_000; // 100MB threshold
+                options.MaximumErrorRate = 0.2;                  // High error tolerance for testing (20%)
+                options.IncludeDetailedMemoryStats = true;       // Full diagnostics for debugging
+                options.AutoTriggerGarbageCollection = false;    // Predictable behavior for testing
+            }),
+            
+            _ => services.AddStreamingHealthCheckBehavior() // Default configuration
+        };
     }
 
     #endregion
