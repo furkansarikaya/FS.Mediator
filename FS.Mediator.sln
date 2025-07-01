@@ -1,0 +1,21 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4C4A3325-A026-4C40-8C99-C37130B03206}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FS.Mediator", "src\FS.Mediator\FS.Mediator.csproj", "{D7952EAE-B45E-4EAA-BD11-6621AEA1D0E5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D7952EAE-B45E-4EAA-BD11-6621AEA1D0E5} = {4C4A3325-A026-4C40-8C99-C37130B03206}
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D7952EAE-B45E-4EAA-BD11-6621AEA1D0E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7952EAE-B45E-4EAA-BD11-6621AEA1D0E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7952EAE-B45E-4EAA-BD11-6621AEA1D0E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7952EAE-B45E-4EAA-BD11-6621AEA1D0E5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
