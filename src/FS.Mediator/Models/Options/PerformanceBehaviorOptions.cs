@@ -1,4 +1,4 @@
-namespace FS.Mediator.Behaviors;
+namespace FS.Mediator.Models.Options;
 
 /// <summary>
 /// Configuration options for the PerformanceBehavior.

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using FS.Mediator.Core;
+using FS.Mediator.Models.Options;
 using Microsoft.Extensions.Logging;
 
 namespace FS.Mediator.Behaviors;
