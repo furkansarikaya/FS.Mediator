@@ -22,6 +22,7 @@
         <RepositoryType>git</RepositoryType>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageIcon>icon.png</PackageIcon>
 
         <!-- Package Documentation -->
         <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
@@ -76,15 +77,15 @@
         <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
-    <!-- Optional: Include package icon -->
-    <!-- <ItemGroup> -->
-    <!--     <None Include="icon.png" Pack="true" PackagePath="" /> -->
-    <!-- </ItemGroup> -->
+    <!-- Package Icon Configuration -->
+    <ItemGroup>
+        <None Include="icon.png" Pack="true" PackagePath="" />
+    </ItemGroup>
 
     <!-- Analyzer and Code Quality -->
     <ItemGroup>
-        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
-        <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
     </ItemGroup>
 
     <!-- Development Dependencies (not included in package) -->
