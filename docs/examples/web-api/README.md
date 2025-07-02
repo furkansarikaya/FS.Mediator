@@ -68,7 +68,7 @@ public record CreateProductCommand(
 ### 1. Streaming Endpoints
 ```csharp
 [HttpGet("recent/{days}")]
-public async IAsyncEnumerable<ProductDto> GetRecentProducts(int days)
+public async IAsyncEnumerable<ProductDto> GetRecentProducts(int days, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 {
     await foreach (var product in _mediator.CreateStream(new GetRecentProductsQuery(days)))
     {

@@ -50,7 +50,7 @@ Configured via `StreamingBackpressureBehavior` with strategies:
 - **Drop**: Discard excess items
 - **Throttle**: Slow down producer
 
-See @[docs/configuration/presets.md] for configuration presets.
+See [Configuration Presets](../../configuration/presets.md) for configuration presets.
 
 ### 2. Health Monitoring
 ```mermaid

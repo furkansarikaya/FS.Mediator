@@ -40,7 +40,7 @@ public class GetUserQuery : IRequest<UserDto>
 
 public class GetUserHandler : IRequestHandler<GetUserQuery, UserDto>
 {
-    public Task<UserDto> Handle(GetUserQuery request, CancellationToken ct)
+    public async Task<UserDto> HandleAsync(GetUserQuery request, CancellationToken ct)
     {
         // implementation
     }

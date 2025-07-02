@@ -25,7 +25,7 @@ public record GetUserById(int Id) : IRequest<User>;
 ```csharp
 public class GetUserByIdHandler : IRequestHandler<GetUserById, User>
 {
-    public async Task<User> Handle(GetUserById request, CancellationToken ct)
+    public async Task<User> HandleAsync(GetUserById request, CancellationToken ct)
     {
         return await _userRepository.GetByIdAsync(request.Id, ct);
     }
@@ -35,15 +35,12 @@ public class GetUserByIdHandler : IRequestHandler<GetUserById, User>
 ### 3. Register Services
 ```csharp
 // In Startup.cs or Program.cs
-services.AddFSMediator(cfg => 
-{
-    cfg.RegisterHandlersFromAssemblyContaining<Startup>();
-});
+services.AddFSMediator(typeof(Startup).Assembly);
 ```
 
 ### 4. Send Requests
 ```csharp
-var user = await _mediator.Send(new GetUserById(123));
+var user = await _mediator.SendAsync(new GetUserById(123));
 ```
 
 ## Project Structure

@@ -55,7 +55,7 @@ public record GetUserQuery(int Id) : IRequest<User>;
 
 public class GetUserHandler : IRequestHandler<GetUserQuery, User>
 {
-    public Task<User> Handle(GetUserQuery request, CancellationToken ct)
+    public async Task<User> HandleAsync(GetUserQuery request, CancellationToken ct)
     {
         return _repository.GetUserAsync(request.Id, ct);
     }
