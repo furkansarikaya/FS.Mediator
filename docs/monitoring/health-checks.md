@@ -131,4 +131,4 @@ readinessProbe:
 
 - [Explore Metrics](../monitoring/metrics.md) for monitoring
 - [Review Logging](../monitoring/logging.md) configurations
-- [Check API Reference](../../api-reference/configuration.md) for advanced options
+- [Check API Reference](../api-reference/configuration.md) for advanced options
