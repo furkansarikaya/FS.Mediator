@@ -80,6 +80,6 @@ flowchart LR
 
 ## Next Steps
 
-- [Review Release Notes](https://github.com/FS/FS.Mediator/releases)
+- [Review Release Notes](https://github.com/furkansarikaya/FS.Mediator/releases)
 - [Explore New Features](../api-reference/core-interfaces.md)
 - [Test Performance](../streaming/performance-tips.md)
