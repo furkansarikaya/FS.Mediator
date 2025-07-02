@@ -621,6 +621,388 @@ public static class ServiceCollectionExtensions
     }
 
     #endregion
+    
+    #region Resource Management Behaviors
+
+    /// <summary>
+    /// Adds resource management behavior to the pipeline.
+    /// 
+    /// Resource management is like having a careful housekeeper for your application -
+    /// it continuously monitors memory usage, tracks disposable resources, and takes
+    /// corrective action when resource pressure builds up.
+    /// 
+    /// This behavior is particularly valuable for:
+    /// - Long-running applications that process many requests
+    /// - Memory-constrained environments (containers, embedded systems)
+    /// - Applications with complex object lifecycles
+    /// - Systems that need to prevent memory-related crashes
+    /// 
+    /// Think of this as your application's "resource bodyguard" that ensures
+    /// your system stays healthy even under demanding conditions.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize resource management behavior.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddResourceManagementBehavior(this IServiceCollection services,
+        Action<ResourceManagementOptions>? configureOptions = null)
+    {
+        var options = new ResourceManagementOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddPipelineBehavior(typeof(ResourceManagementBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds resource management behavior with predefined configuration for common scenarios.
+    /// These presets provide battle-tested configurations optimized for different deployment scenarios.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="preset">The preset configuration to use</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddResourceManagementBehavior(this IServiceCollection services, ResourceManagementPreset preset)
+    {
+        return preset switch
+        {
+            ResourceManagementPreset.MemoryConstrained => services.AddResourceManagementBehavior(options =>
+            {
+                // Optimized for containers and memory-limited environments
+                options.MaxMemoryThresholdBytes = 256_000_000; // 256MB
+                options.MemoryGrowthRateThresholdBytesPerSecond = 5_000_000; // 5MB/s
+                options.AutoTriggerGarbageCollection = true;
+                options.ForceFullGarbageCollection = true;
+                options.MonitoringIntervalSeconds = 15; // Frequent monitoring
+                options.CleanupStrategy = ResourceCleanupStrategy.Aggressive;
+                options.EnableDisposableResourceTracking = true;
+                options.CollectDetailedMemoryStats = false; // Reduce overhead
+            }),
+            
+            ResourceManagementPreset.HighPerformance => services.AddResourceManagementBehavior(options =>
+            {
+                // Optimized for performance-critical applications
+                options.MaxMemoryThresholdBytes = 1_000_000_000; // 1GB
+                options.MemoryGrowthRateThresholdBytesPerSecond = 50_000_000; // 50MB/s
+                options.AutoTriggerGarbageCollection = false; // Let GC manage itself
+                options.MonitoringIntervalSeconds = 60; // Less frequent monitoring
+                options.CleanupStrategy = ResourceCleanupStrategy.Conservative;
+                options.EnableDisposableResourceTracking = false; // Reduce overhead
+                options.CollectDetailedMemoryStats = false;
+            }),
+            
+            ResourceManagementPreset.Balanced => services.AddResourceManagementBehavior(options =>
+            {
+                // Balanced configuration for most applications
+                options.MaxMemoryThresholdBytes = 512_000_000; // 512MB
+                options.MemoryGrowthRateThresholdBytesPerSecond = 10_000_000; // 10MB/s
+                options.AutoTriggerGarbageCollection = true;
+                options.ForceFullGarbageCollection = false;
+                options.MonitoringIntervalSeconds = 30;
+                options.CleanupStrategy = ResourceCleanupStrategy.Balanced;
+                options.EnableDisposableResourceTracking = true;
+                options.CollectDetailedMemoryStats = false;
+            }),
+            
+            ResourceManagementPreset.Development => services.AddResourceManagementBehavior(options =>
+            {
+                // Optimized for development and debugging
+                options.MaxMemoryThresholdBytes = 2_000_000_000; // 2GB - generous for development
+                options.MemoryGrowthRateThresholdBytesPerSecond = 100_000_000; // 100MB/s
+                options.AutoTriggerGarbageCollection = false; // Predictable behavior for debugging
+                options.MonitoringIntervalSeconds = 10; // Frequent monitoring for debugging
+                options.CleanupStrategy = ResourceCleanupStrategy.Conservative;
+                options.EnableDisposableResourceTracking = true; // Help find resource leaks
+                options.CollectDetailedMemoryStats = true; // Full diagnostics
+            }),
+            
+            _ => services.AddResourceManagementBehavior() // Default configuration
+        };
+    }
+
+    /// <summary>
+    /// Adds streaming resource management behavior to the pipeline.
+    /// 
+    /// Streaming resource management is even more critical than regular resource management
+    /// because streams can run for hours or days, making any resource leak catastrophic.
+    /// 
+    /// This behavior is like having a dedicated "stream shepherd" that:
+    /// - Monitors memory usage as data flows through
+    /// - Prevents resource accumulation over time
+    /// - Takes corrective action before problems become critical
+    /// - Maintains stream health without interrupting data flow
+    /// 
+    /// Essential for:
+    /// - Large data processing operations (ETL, analytics)
+    /// - Real-time data streams that run continuously
+    /// - Long-running batch operations
+    /// - Any stream that processes significant amounts of data
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize streaming resource management.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingResourceManagementBehavior(this IServiceCollection services,
+        Action<ResourceManagementOptions>? configureOptions = null)
+    {
+        var options = new ResourceManagementOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddStreamingPipelineBehavior(typeof(StreamingResourceManagementBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds streaming resource management behavior with predefined configuration for common scenarios.
+    /// These presets provide battle-tested configurations optimized for different streaming scenarios.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="preset">The preset configuration to use</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingResourceManagementBehavior(this IServiceCollection services, ResourceManagementPreset preset)
+    {
+        return preset switch
+        {
+            ResourceManagementPreset.MemoryConstrained => services.AddStreamingResourceManagementBehavior(options =>
+            {
+                // Optimized for containers and memory-limited environments
+                options.MaxMemoryThresholdBytes = 256_000_000; // 256MB
+                options.MemoryGrowthRateThresholdBytesPerSecond = 5_000_000; // 5MB/s
+                options.AutoTriggerGarbageCollection = true;
+                options.ForceFullGarbageCollection = true;
+                options.MonitoringIntervalSeconds = 15; // Frequent monitoring
+                options.CleanupStrategy = ResourceCleanupStrategy.Aggressive;
+                options.EnableDisposableResourceTracking = true;
+                options.CollectDetailedMemoryStats = false; // Reduce overhead
+            }),
+            
+            ResourceManagementPreset.HighPerformance => services.AddStreamingResourceManagementBehavior(options =>
+            {
+                // Optimized for performance-critical streaming applications
+                options.MaxMemoryThresholdBytes = 1_000_000_000; // 1GB
+                options.MemoryGrowthRateThresholdBytesPerSecond = 50_000_000; // 50MB/s
+                options.AutoTriggerGarbageCollection = false; // Let GC manage itself
+                options.MonitoringIntervalSeconds = 60; // Less frequent monitoring
+                options.CleanupStrategy = ResourceCleanupStrategy.Conservative;
+                options.EnableDisposableResourceTracking = false; // Reduce overhead
+                options.CollectDetailedMemoryStats = false;
+            }),
+            
+            ResourceManagementPreset.Balanced => services.AddStreamingResourceManagementBehavior(options =>
+            {
+                // Balanced configuration for most streaming applications
+                options.MaxMemoryThresholdBytes = 512_000_000; // 512MB
+                options.MemoryGrowthRateThresholdBytesPerSecond = 10_000_000; // 10MB/s
+                options.AutoTriggerGarbageCollection = true;
+                options.ForceFullGarbageCollection = false;
+                options.MonitoringIntervalSeconds = 30;
+                options.CleanupStrategy = ResourceCleanupStrategy.Balanced;
+                options.EnableDisposableResourceTracking = true;
+                options.CollectDetailedMemoryStats = false;
+            }),
+            
+            ResourceManagementPreset.Development => services.AddStreamingResourceManagementBehavior(options =>
+            {
+                // Optimized for development and debugging streaming operations
+                options.MaxMemoryThresholdBytes = 2_000_000_000; // 2GB - generous for development
+                options.MemoryGrowthRateThresholdBytesPerSecond = 100_000_000; // 100MB/s
+                options.AutoTriggerGarbageCollection = false; // Predictable behavior for debugging
+                options.MonitoringIntervalSeconds = 10; // Frequent monitoring for debugging
+                options.CleanupStrategy = ResourceCleanupStrategy.Conservative;
+                options.EnableDisposableResourceTracking = true; // Help find resource leaks
+                options.CollectDetailedMemoryStats = true; // Full diagnostics
+            }),
+            
+            _ => services.AddStreamingResourceManagementBehavior() // Default configuration
+        };
+    }
+
+    /// <summary>
+    /// Adds streaming backpressure handling behavior to the pipeline.
+    /// 
+    /// Backpressure handling is like having a skilled traffic manager for your data streams.
+    /// When data producers are faster than consumers, this behavior implements sophisticated
+    /// strategies to maintain system stability and prevent crashes.
+    /// 
+    /// Think of backpressure as your "data traffic control system" that:
+    /// - Monitors the flow rate of data through your system
+    /// - Detects when consumers can't keep up with producers
+    /// - Applies appropriate strategies to maintain system stability
+    /// - Prevents memory exhaustion and system crashes
+    /// 
+    /// Critical for:
+    /// - High-throughput data processing systems
+    /// - Real-time streaming applications
+    /// - Systems with variable processing speeds
+    /// - Applications that need to handle traffic spikes gracefully
+    /// 
+    /// The behavior offers multiple strategies (Buffer, Drop, Throttle, Sample, Block)
+    /// each optimized for different trade-offs between throughput, latency, and data completeness.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="configureOptions">Optional configuration action to customize backpressure handling.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingBackpressureBehavior(this IServiceCollection services,
+        Action<BackpressureOptions>? configureOptions = null)
+    {
+        var options = new BackpressureOptions();
+        configureOptions?.Invoke(options);
+        
+        services.AddSingleton(options);
+        return services.AddStreamingPipelineBehavior(typeof(StreamingBackpressureBehavior<,>));
+    }
+
+    /// <summary>
+    /// Adds streaming backpressure behavior with predefined configuration for common scenarios.
+    /// These presets represent different philosophies for handling producer-consumer speed mismatches.
+    /// </summary>
+    /// <param name="services">The service collection to add the behavior to.</param>
+    /// <param name="preset">The preset configuration to use</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingBackpressureBehavior(this IServiceCollection services, BackpressurePreset preset)
+    {
+        return preset switch
+        {
+            BackpressurePreset.NoDataLoss => services.AddStreamingBackpressureBehavior(options =>
+            {
+                // Prioritizes data completeness over performance
+                options.Strategy = BackpressureStrategy.Throttle;
+                options.MaxBufferSize = 50_000; // Large buffer
+                options.HighWaterMarkThreshold = 0.9; // Allow high buffer usage
+                options.LowWaterMarkThreshold = 0.3; // Conservative relief
+                options.MaxThrottleDelayMs = 5000; // Accept significant delays
+                options.CollectDetailedMetrics = true;
+            }),
+            
+            BackpressurePreset.HighThroughput => services.AddStreamingBackpressureBehavior(options =>
+            {
+                // Prioritizes throughput and responsiveness
+                options.Strategy = BackpressureStrategy.Drop;
+                options.MaxBufferSize = 10_000; // Moderate buffer
+                options.HighWaterMarkThreshold = 0.7; // Early intervention
+                options.LowWaterMarkThreshold = 0.3;
+                options.PreferNewerItems = true; // Keep latest data
+                options.CollectDetailedMetrics = true;
+            }),
+            
+            BackpressurePreset.MemoryConstrained => services.AddStreamingBackpressureBehavior(options =>
+            {
+                // Optimized for low-memory environments
+                options.Strategy = BackpressureStrategy.Sample;
+                options.MaxBufferSize = 1_000; // Small buffer
+                options.HighWaterMarkThreshold = 0.5; // Very early intervention
+                options.LowWaterMarkThreshold = 0.2;
+                options.SampleRate = 2; // Process every other item under pressure
+                options.CollectDetailedMetrics = false; // Reduce overhead
+            }),
+            
+            BackpressurePreset.RealTime => services.AddStreamingBackpressureBehavior(options =>
+            {
+                // Optimized for real-time applications
+                options.Strategy = BackpressureStrategy.Drop;
+                options.MaxBufferSize = 5_000; // Small buffer for low latency
+                options.HighWaterMarkThreshold = 0.6;
+                options.LowWaterMarkThreshold = 0.2;
+                options.PreferNewerItems = true; // Always keep latest data
+                options.MeasurementWindowSeconds = 10; // Quick response
+                options.CollectDetailedMetrics = true;
+            }),
+            
+            BackpressurePreset.Analytics => services.AddStreamingBackpressureBehavior(options =>
+            {
+                // Optimized for analytics where sampling is acceptable
+                options.Strategy = BackpressureStrategy.Sample;
+                options.MaxBufferSize = 25_000; // Large buffer for batch processing
+                options.HighWaterMarkThreshold = 0.8;
+                options.LowWaterMarkThreshold = 0.4;
+                options.SampleRate = 10; // 10% sampling under pressure
+                options.EnableAdaptiveBackpressure = true;
+                options.CollectDetailedMetrics = true;
+            }),
+            
+            BackpressurePreset.Balanced => services.AddStreamingBackpressureBehavior(options =>
+            {
+                // Balanced approach suitable for most scenarios
+                options.Strategy = BackpressureStrategy.Buffer;
+                options.MaxBufferSize = 10_000;
+                options.HighWaterMarkThreshold = 0.8;
+                options.LowWaterMarkThreshold = 0.5;
+                options.CollectDetailedMetrics = true;
+            }),
+            
+            _ => services.AddStreamingBackpressureBehavior() // Default configuration
+        };
+    }
+
+    /// <summary>
+    /// Adds a complete streaming resilience and efficiency package.
+    /// This combines resource management and backpressure handling with the existing
+    /// resilience package for comprehensive stream protection.
+    /// 
+    /// Think of this as the "premium protection plan" for your streaming operations.
+    /// It provides:
+    /// - **Resource Management**: Prevents memory leaks and resource exhaustion
+    /// - **Backpressure Handling**: Manages producer-consumer speed mismatches
+    /// - **Retry Logic**: Handles transient failures gracefully
+    /// - **Circuit Breaking**: Protects against cascade failures
+    /// - **Performance Monitoring**: Tracks stream health and efficiency
+    /// - **Comprehensive Logging**: Provides visibility into all operations
+    /// 
+    /// This package is recommended for production streaming systems where
+    /// reliability, efficiency, and observability are all critical requirements.
+    /// </summary>
+    /// <param name="services">The service collection to add behaviors to.</param>
+    /// <param name="resourcePreset">Resource management preset (default: Balanced)</param>
+    /// <param name="backpressurePreset">Backpressure preset (default: Balanced)</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddStreamingPlatinumPackage(this IServiceCollection services,
+        ResourceManagementPreset resourcePreset = ResourceManagementPreset.Balanced,
+        BackpressurePreset backpressurePreset = BackpressurePreset.Balanced)
+    {
+        return services
+            // Resource management comes first to monitor memory usage
+            .AddStreamingResourceManagementBehavior(resourcePreset)
+            
+            // Backpressure handling manages data flow rates
+            .AddStreamingBackpressureBehavior(backpressurePreset)
+            
+            // Health monitoring provides comprehensive diagnostics
+            .AddStreamingHealthCheckBehavior(HealthCheckPreset.DataProcessing)
+            
+            // Performance monitoring tracks efficiency
+            .AddStreamingPerformanceBehavior(options =>
+            {
+                options.TimeToFirstItemWarningMs = 3000;
+                options.MinimumThroughputItemsPerSecond = 50;
+                options.ThroughputCheckIntervalSeconds = 20;
+                options.CollectMemoryMetrics = true; // Enhanced memory tracking
+            })
+            
+            // Retry logic for resilience
+            .AddStreamingRetryBehavior(options =>
+            {
+                options.MaxRetryAttempts = 2;
+                options.InitialDelay = TimeSpan.FromSeconds(1);
+                options.RetryStrategy = RetryStrategy.ExponentialBackoff;
+                options.MaxTotalRetryTime = TimeSpan.FromMinutes(3);
+            })
+            
+            // Circuit breaker for system protection
+            .AddStreamingCircuitBreakerBehavior(options =>
+            {
+                options.FailureThresholdPercentage = 50.0;
+                options.MinimumThroughput = 3;
+                options.SamplingDuration = TimeSpan.FromMinutes(3);
+                options.DurationOfBreak = TimeSpan.FromMinutes(1);
+            })
+            
+            // Comprehensive logging ties everything together
+            .AddStreamingLoggingBehavior(options =>
+            {
+                options.LogProgressEveryNItems = 2500;
+                options.LogProgressEveryNSeconds = 45;
+                options.LogDetailedMetrics = true;
+            });
+    }
+
+    #endregion
 
     #region Request/Response Interceptors
 
