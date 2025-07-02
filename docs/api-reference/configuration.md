@@ -131,7 +131,8 @@ flowchart TD
 
 ## Next Steps
 
-- [Behavior Configuration](../behaviors.md)
+- [Behavior Configuration](behaviors.md)
+- [Core Interfaces](core-interfaces.md)
+- [Streaming Guide](streaming.md)
 - [Resilience Patterns](../resilience/overview.md)
-- [Monitoring Setup](../monitoring/README.md)
-- [Streaming Guide](../streaming/getting-started.md)
+- [Monitoring Documentation](../monitoring/)
