@@ -61,6 +61,6 @@ public class ProcessLargeDatasetHandler : IStreamRequestHandler<ProcessedItem>
    - Resource cleanup
 
 ## Related Documentation
-- [Streaming Guide](../api-reference/streaming.md)
-- [Configuration Presets](../configuration/presets.md)
-- [Custom Behaviors](../configuration/custom-behaviors.md)
+- [Streaming Guide](../../api-reference/streaming.md)
+- [Configuration Presets](../../configuration/presets.md)
+- [Custom Behaviors](../../configuration/custom-behaviors.md)
