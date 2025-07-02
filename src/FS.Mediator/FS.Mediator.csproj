@@ -25,7 +25,7 @@
         <PackageIcon>icon.png</PackageIcon>
 
         <!-- Package Documentation -->
-        <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
+        <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
         <!-- Package Release Notes -->
