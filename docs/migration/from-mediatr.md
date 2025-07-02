@@ -123,13 +123,14 @@ public class LoggingBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, 
 
 2. **Streaming Not Working**:
    - Ensure you're using `IAsyncEnumerable` in both request and client code
-   - Apply proper backpressure presets from [Configuration Presets](configuration/presets.md)
+   - Apply proper backpressure presets from [Backpressure Guide](../resilience/backpressure.md)
 
 3. **Behavior Ordering**:
    - Use `ConfigurePipeline()` to explicitly define behavior order
-   - See [Pipeline Configuration](configuration/pipeline.md) for advanced configuration
+   - See [Behavior Configuration](../configuration/behaviors.md) for advanced setup
 
 ## Next Steps
 
-- [Explore Presets](configuration/presets.md) for performance tuning
-- [Review Examples](examples/microservices/README.md) for implementation patterns
+- [Explore Configuration Presets](../configuration/presets.md) for performance tuning
+- [Review Microservices Example](../examples/microservices/README.md) for implementation patterns
+- [Check Upgrade Guide](./upgrading.md) for version-specific changes
