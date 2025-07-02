@@ -546,9 +546,9 @@ builder.Services
 For more detailed documentation, see:
 
 - [Getting Started Guide](docs/getting-started.md)
-- [Streaming Operations](docs/streaming/overview.md)
-- [Resilience Patterns](docs/resilience/overview.md)
-- [Configuration Reference](docs/configuration/behaviors.md)
+- [Streaming Operations](docs/streaming/)
+- [Resilience Patterns](docs/resilience/)
+- [Configuration Reference](docs/configuration/)
 - [Performance Tuning](docs/streaming/performance-tips.md)
 - [Examples Repository](docs/examples/)
 
