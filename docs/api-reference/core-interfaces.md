@@ -178,7 +178,6 @@ flowchart TD
    - Consider handler pooling for high throughput
 
 ## Next Steps
-- [Advanced Handler Patterns](../advanced/handlers.md)
-- [Behavior Composition Guide](../behaviors.md)
-- [Streaming Deep Dive](../streaming.md)
-- [Performance Optimization](../performance.md)
+- [Behavior Configuration](behaviors.md)
+- [Streaming Guide](streaming.md)
+- [Configuration Reference](configuration.md)
