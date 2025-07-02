@@ -85,4 +85,4 @@ services.AddFSMediator()
    - Implement circuit breakers for external service calls
    - Use dead-letter queues for failed messages
 
-[Back to main documentation](../README.md)
+[Back to main documentation](../../../README.md)
