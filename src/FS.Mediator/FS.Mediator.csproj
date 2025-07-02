@@ -1,14 +1,102 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <!-- Target Framework Configuration -->
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+
+        <!-- Package Information -->
+        <PackageId>FS.Mediator</PackageId>
+        <Version>9.0.0</Version>
+        <Authors>Furkan Sarıkaya</Authors>
+        <Company>Furkan Sarıkaya</Company>
+        <Product>FS.Mediator</Product>
+        <Description>A comprehensive, high-performance mediator library for .NET with advanced streaming capabilities, built-in resilience patterns (circuit breaker, retry, backpressure), and sophisticated resource management. Perfect for building scalable microservices and data processing applications.</Description>
+        <PackageTags>mediator;streaming;circuit-breaker;retry;backpressure;cqrs;resource-management;performance;resilience;patterns</PackageTags>
+
+        <!-- Package Metadata -->
+        <PackageProjectUrl>https://github.com/furkansarikaya/FS.Mediator</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/furkansarikaya/FS.Mediator</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+        <!-- Package Documentation -->
+        <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+        <!-- Package Release Notes -->
+        <PackageReleaseNotes>
+            Version 9.0.0 - Initial Release
+
+            Features:
+            • Complete mediator pattern implementation with request/response and notification handling
+            • Advanced streaming capabilities with IAsyncEnumerable support
+            • Built-in resilience patterns: Circuit Breaker, Retry, Backpressure handling
+            • Comprehensive resource management and memory monitoring
+            • Health checking and diagnostics for streaming operations
+            • Performance monitoring and optimization behaviors
+            • Extensive logging and telemetry support
+            • Pipeline behaviors for cross-cutting concerns
+            • Request/Response interceptors
+            • Multiple configuration presets for common scenarios
+
+            Perfect for:
+            • Microservices architectures
+            • High-throughput data processing
+            • Real-time streaming applications
+            • Enterprise applications requiring resilience
+        </PackageReleaseNotes>
+
+        <!-- Build Configuration -->
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+        <!-- Assembly Information -->
+        <AssemblyTitle>FS.Mediator</AssemblyTitle>
+        <AssemblyDescription>Advanced mediator library with streaming and resilience patterns</AssemblyDescription>
+        <Copyright>Copyright © 2025 Furkan Sarıkaya</Copyright>
+
+        <!-- Optional: Strong naming for enterprise scenarios -->
+        <!-- <SignAssembly>true</SignAssembly> -->
+        <!-- <AssemblyOriginatorKeyFile>key.snk</AssemblyOriginatorKeyFile> -->
     </PropertyGroup>
 
+    <!-- Package Dependencies -->
     <ItemGroup>
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
     </ItemGroup>
+
+    <!-- Include README in package -->
+    <ItemGroup>
+        <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <!-- Optional: Include package icon -->
+    <!-- <ItemGroup> -->
+    <!--     <None Include="icon.png" Pack="true" PackagePath="" /> -->
+    <!-- </ItemGroup> -->
+
+    <!-- Analyzer and Code Quality -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+        <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0" PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- Development Dependencies (not included in package) -->
+    <ItemGroup>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+    </ItemGroup>
+
+    <!-- Compiler Configuration for Performance -->
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <Optimize>true</Optimize>
+        <DebugType>pdbonly</DebugType>
+        <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
 
 </Project>
