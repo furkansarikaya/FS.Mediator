@@ -550,7 +550,7 @@ For more detailed documentation, see:
 - [Resilience Patterns](docs/resilience/overview.md)
 - [Configuration Reference](docs/configuration/behaviors.md)
 - [Performance Tuning](docs/streaming/performance-tips.md)
-- [Examples Repository](examples/)
+- [Examples Repository](docs/examples/)
 
 ## 🤝 Contributing
 
