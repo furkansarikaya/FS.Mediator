@@ -73,4 +73,4 @@ services.AddFSMediator(cfg =>
 ## Next Steps
 
 - Learn About Streaming
-- [Understand Behaviors](/configuration/behaviors.md)
+- [Understand Behaviors](configuration/behaviors.md)
