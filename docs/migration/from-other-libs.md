@@ -100,6 +100,6 @@ services.AddFSMediator(cfg =>
 
 ## Next Steps
 
-- [Review Core Concepts](../../basic-concepts.md) for FS.Mediator fundamentals
-- [Explore API Reference](../../api-reference/core-interfaces.md) for interface details
-- [Check Migration Examples](../from-mediatr.md) for additional patterns
+- [Review Core Concepts](../basic-concepts.md) for FS.Mediator fundamentals
+- [Explore API Reference](../api-reference/core-interfaces.md) for interface details
+- [Check Migration Examples](from-mediatr.md) for additional patterns
