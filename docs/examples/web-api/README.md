@@ -112,7 +112,7 @@ public class MediatorExceptionFilter : IExceptionFilter
    - Document response types
 
 See also:
-- @[docs/configuration/presets.md] for performance tuning
-- @[docs/examples/real-time/README.md] for streaming best practices
+- [Configuration Presets](../../configuration/presets.md) for performance tuning
+- [Real-Time Examples](../real-time/README.md) for streaming best practices
 
 [Back to main documentation](../../../README.md)
