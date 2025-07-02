@@ -1,11 +1,34 @@
 using System.Reflection;
-using FS.Mediator.Behaviors;
-using FS.Mediator.Behaviors.Streaming;
-using FS.Mediator.Behaviors.Streaming.Diagnostics;
-using FS.Mediator.Core;
-using FS.Mediator.Implementation;
-using FS.Mediator.Models.Enums;
-using FS.Mediator.Models.Options;
+using FS.Mediator.Features.Backpressure.Behaviors.Streaming;
+using FS.Mediator.Features.Backpressure.Models.Enums;
+using FS.Mediator.Features.Backpressure.Models.Options;
+using FS.Mediator.Features.CircuitBreaker.Behaviors;
+using FS.Mediator.Features.CircuitBreaker.Behaviors.Streaming;
+using FS.Mediator.Features.CircuitBreaker.Models.Enums;
+using FS.Mediator.Features.CircuitBreaker.Models.Options;
+using FS.Mediator.Features.HealthChecking.Behaviors.Streaming.Diagnostics;
+using FS.Mediator.Features.HealthChecking.Models.Enums;
+using FS.Mediator.Features.HealthChecking.Models.Options;
+using FS.Mediator.Features.HealthChecking.Services;
+using FS.Mediator.Features.Logging.Behaviors;
+using FS.Mediator.Features.Logging.Behaviors.Streaming;
+using FS.Mediator.Features.Logging.Models.Options;
+using FS.Mediator.Features.NotificationHandling.Core;
+using FS.Mediator.Features.Performance.Behaviors;
+using FS.Mediator.Features.Performance.Behaviors.Streaming;
+using FS.Mediator.Features.Performance.Models.Options;
+using FS.Mediator.Features.RequestHandling.Core;
+using FS.Mediator.Features.RequestHandling.Implementation;
+using FS.Mediator.Features.RequestHandling.Interceptors;
+using FS.Mediator.Features.ResourceManagement.Behaviors;
+using FS.Mediator.Features.ResourceManagement.Behaviors.Streaming;
+using FS.Mediator.Features.ResourceManagement.Models.Enums;
+using FS.Mediator.Features.ResourceManagement.Models.Options;
+using FS.Mediator.Features.Retry.Behaviors;
+using FS.Mediator.Features.Retry.Behaviors.Streaming;
+using FS.Mediator.Features.Retry.Models.Enums;
+using FS.Mediator.Features.Retry.Models.Options;
+using FS.Mediator.Features.StreamHandling.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -33,7 +56,7 @@ public static class ServiceCollectionExtensions
         }
 
         // Register core services
-        services.TryAddScoped<IMediator, Implementation.Mediator>();
+        services.TryAddScoped<IMediator, Features.RequestHandling.Implementation.Mediator>();
         services.TryAddScoped<ServiceFactory>(provider => provider.GetRequiredService);
         services.TryAddScoped<ServiceFactoryCollection>(provider => 
             serviceType => provider.GetServices(serviceType)!);
