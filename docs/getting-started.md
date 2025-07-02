@@ -57,9 +57,9 @@ flowchart LR
 
 ## Next Steps
 
-- [Learn Core Concepts](../basic-concepts.md)
-- [Explore Examples](../examples/)
-- [Configure Behaviors](../configuration/behaviors.md)
+- [Learn Core Concepts](basic-concepts.md)
+- [Explore Examples](examples/)
+- [Configure Behaviors](configuration/behaviors.md)
 
 ## Troubleshooting
 
@@ -71,4 +71,4 @@ flowchart LR
    - Ensure handlers are registered in DI
 
 3. **Performance Problems**:
-   - Review [Performance Tips](../streaming/performance-tips.md)
+   - Review [Performance Tips](streaming/performance-tips.md)
