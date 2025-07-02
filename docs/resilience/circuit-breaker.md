@@ -73,7 +73,7 @@ See [Metrics Documentation](../monitoring/metrics.md) for setup.
 
 3. **Fallback Strategies**:
    - Implement fallback handlers
-   - Use [Retry Patterns](../resilience/retry-policies.md) appropriately
+   - Use [Retry Patterns](../resilience/retry-patterns.md) appropriately
 
 ## Troubleshooting
 
