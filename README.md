@@ -146,8 +146,8 @@ Combine streaming with enterprise patterns for robust data processing:
 builder.Services
     .AddFSMediator()
     .AddStreamingResiliencePackage()                  // Complete streaming protection
-    .AddStreamingBackpressureBehavior(BackpressurePreset.DataProcessing)  // Handle load spikes
-    .AddStreamingHealthCheckBehavior(HealthCheckPreset.LongRunning);       // Monitor health
+    .AddStreamingBackpressureBehavior(BackpressurePreset.Analytics)  // Handle load spikes
+    .AddStreamingHealthCheckBehavior(HealthCheckPreset.LongRunning); // Monitor health
 ```
 
 ## 📋 Comprehensive Examples
@@ -289,7 +289,7 @@ builder.Services
         options.LogProgressEveryNItems = 10000;      // Log every 10k items
         options.LogProgressEveryNSeconds = 60;       // Log every minute
     })
-    .AddStreamingBackpressureBehavior(BackpressurePreset.DataProcessing)
+    .AddStreamingBackpressureBehavior(BackpressurePreset.Analytics)
     .AddStreamingResourceManagementBehavior(ResourceManagementPreset.MemoryConstrained);
 
 // For real-time applications  
@@ -297,6 +297,41 @@ builder.Services
     .AddFSMediator()
     .AddStreamingBackpressureBehavior(BackpressurePreset.RealTime)
     .AddStreamingHealthCheckBehavior(HealthCheckPreset.HighPerformance);
+```
+
+### Backpressure Strategies
+
+Choose the right strategy for your use case:
+
+```csharp
+// Buffer strategy (default) - queue items when consumer is slow
+builder.Services.AddStreamingBackpressureBehavior(options => {
+    options.Strategy = BackpressureStrategy.Buffer;
+    options.MaxBufferSize = 10000;
+});
+
+// Drop strategy - discard items when overwhelmed
+builder.Services.AddStreamingBackpressureBehavior(options => {
+    options.Strategy = BackpressureStrategy.Drop;
+    options.PreferNewerItems = true; // Keep latest data
+});
+
+// Throttle strategy - slow down producer to match consumer
+builder.Services.AddStreamingBackpressureBehavior(options => {
+    options.Strategy = BackpressureStrategy.Throttle;
+    options.MaxThrottleDelayMs = 1000; // Max 1 second delay
+});
+
+// Sample strategy - process only subset of items under pressure
+builder.Services.AddStreamingBackpressureBehavior(options => {
+    options.Strategy = BackpressureStrategy.Sample;
+    options.SampleRate = 2; // Process every 2nd item under pressure
+});
+
+// Block strategy - halt producer until consumer catches up
+builder.Services.AddStreamingBackpressureBehavior(options => {
+    options.Strategy = BackpressureStrategy.Block;
+});
 ```
 
 ### Request/Response Interceptors
@@ -353,7 +388,7 @@ Define custom logic for handling producer-consumer speed mismatches:
 
 ```csharp
 builder.Services.AddStreamingBackpressureBehavior(options => {
-    options.Strategy = BackpressureStrategy.Custom;
+    options.Strategy = BackpressureStrategy.Buffer; // Use existing strategy
     options.CustomBackpressureHandler = context => {
         if (context.Metrics.CurrentBufferSize > 50000)
         {
@@ -365,6 +400,57 @@ builder.Services.AddStreamingBackpressureBehavior(options => {
         }
     };
 });
+```
+
+## 📊 Available Presets
+
+### BackpressurePreset Options
+
+```csharp
+BackpressurePreset.NoDataLoss      // Prioritizes data completeness
+BackpressurePreset.HighThroughput  // Maximizes performance
+BackpressurePreset.MemoryConstrained // For limited memory environments
+BackpressurePreset.RealTime        // For real-time applications
+BackpressurePreset.Analytics       // For data processing/analytics
+BackpressurePreset.Balanced        // General purpose
+```
+
+### HealthCheckPreset Options
+
+```csharp
+HealthCheckPreset.HighPerformance   // Real-time monitoring
+HealthCheckPreset.DataProcessing    // Batch operations
+HealthCheckPreset.LongRunning       // Overnight jobs
+HealthCheckPreset.RealTime          // User-facing streams
+HealthCheckPreset.Development       // Testing/debugging
+```
+
+### ResourceManagementPreset Options
+
+```csharp
+ResourceManagementPreset.MemoryConstrained  // Containers/embedded
+ResourceManagementPreset.HighPerformance    // Performance critical
+ResourceManagementPreset.Balanced           // Most applications
+ResourceManagementPreset.Development        // Debugging scenarios
+```
+
+### CircuitBreakerPreset Options
+
+```csharp
+CircuitBreakerPreset.Sensitive     // Quick failure detection
+CircuitBreakerPreset.Balanced      // General purpose
+CircuitBreakerPreset.Resilient     // High failure tolerance
+CircuitBreakerPreset.Database      // Database operations
+CircuitBreakerPreset.ExternalApi   // External service calls
+```
+
+### RetryPreset Options
+
+```csharp
+RetryPreset.Conservative   // Quick failure, minimal retries
+RetryPreset.Aggressive     // Persistent retries
+RetryPreset.Database       // Database-specific handling
+RetryPreset.HttpApi        // HTTP/network operations
 ```
 
 ## 📊 Performance Characteristics
@@ -460,10 +546,10 @@ builder.Services
 For more detailed documentation, see:
 
 - [Getting Started Guide](docs/getting-started.md)
-- [Streaming Operations](docs/streaming.md)
-- [Resilience Patterns](docs/resilience.md)
-- [Configuration Reference](docs/configuration.md)
-- [Performance Tuning](docs/performance.md)
+- [Streaming Operations](docs/streaming/overview.md)
+- [Resilience Patterns](docs/resilience/overview.md)
+- [Configuration Reference](docs/configuration/behaviors.md)
+- [Performance Tuning](docs/streaming/performance-tips.md)
 - [Examples Repository](examples/)
 
 ## 🤝 Contributing
