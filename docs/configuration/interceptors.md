@@ -117,4 +117,4 @@ services.AddMediator(cfg =>
 ## Related Documentation
 - [Core Interfaces](../api-reference/core-interfaces.md)
 - [Custom Behaviors](custom-behaviors.md)
-- [Configuration Reference](configuration.md)
+- [Getting Started](../getting-started.md)
