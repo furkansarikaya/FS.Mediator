@@ -104,6 +104,6 @@ flowchart LR
 
 ## Next Steps
 
-- [Review Basic Streaming](../streaming/getting-started.md)
+- [Review Basic Streaming](../streaming/overview.md)
 - [Explore Backpressure](../resilience/backpressure.md)
 - [Check Performance Tips](../streaming/performance-tips.md)
