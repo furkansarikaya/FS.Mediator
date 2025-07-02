@@ -62,7 +62,7 @@ flowchart LR
 
 2. **Advanced Patterns**:
    - [Parallel Processing](../streaming/advanced-streaming.md)
-   - [Error Recovery](../resilience/error-handling.md)
+   - [Error Handling](../resilience/circuit-breaker.md#error-handling)
 
 3. **Production Ready**:
    - [Monitoring Setup](../monitoring/metrics.md)
