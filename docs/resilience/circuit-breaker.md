@@ -73,7 +73,7 @@ See [Metrics Documentation](../monitoring/metrics.md) for setup.
 
 3. **Fallback Strategies**:
    - Implement fallback handlers
-   - Use [Retry Patterns](../resilience/retry-patterns.md) appropriately
+   - Use Retry Patterns appropriately
 
 ## Troubleshooting
 
@@ -86,11 +86,11 @@ See [Metrics Documentation](../monitoring/metrics.md) for setup.
    - Check Half-Open test success rate
 
 3. **Cascading Failures**:
-   - Implement [Bulkhead Isolation](../resilience/bulkheads.md)
+   - Implement Bulkhead Isolation
    - Review dependency health
 
 ## Next Steps
 
-- [Explore Retry Policies](../resilience/retry-policies.md)
-- [Review Bulkhead Pattern](../resilience/bulkheads.md)
+- Explore Retry Policies
+- Review Bulkhead Pattern
 - [Check Health Checks](../monitoring/health-checks.md)
