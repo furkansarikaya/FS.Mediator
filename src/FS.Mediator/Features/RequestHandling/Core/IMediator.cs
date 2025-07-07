@@ -72,6 +72,14 @@ public interface IMediator
     /// <summary>
     /// Publishes a notification to all registered handlers asynchronously.
     /// </summary>
+    /// <param name="notification">The notification to publish.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task PublishAsync(object notification, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Publishes a notification to all registered handlers asynchronously.
+    /// </summary>
     /// <typeparam name="TNotification">The type of notification to publish.</typeparam>
     /// <param name="notification">The notification to publish.</param>
     /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>

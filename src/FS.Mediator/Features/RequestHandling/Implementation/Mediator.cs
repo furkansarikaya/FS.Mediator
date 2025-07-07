@@ -105,6 +105,46 @@ public class Mediator(ServiceFactory serviceFactory, ServiceFactoryCollection se
     }
 
     /// <inheritdoc />
+    public async Task PublishAsync(object notification, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(notification);
+        
+        // Verify that the notification implements INotification
+        if (notification is not INotification notificationInstance)
+        {
+            throw new ArgumentException($"Notification of type '{notification.GetType().Name}' must implement INotification interface.", nameof(notification));
+        }
+        
+        var notificationType = notification.GetType();
+        var handlerType = typeof(INotificationHandler<>).MakeGenericType(notificationType);
+
+        var handlers = serviceFactoryCollection(handlerType).ToList();
+        
+        if (handlers.Count == 0)
+        {
+            // Optionally, you can choose to throw an exception or just log a warning
+            // For now, we'll silently return (consistent with typical mediator behavior)
+            return;
+        }
+
+        var tasks = new List<Task>();
+        
+        foreach (var handler in handlers)
+        {
+            // Use reflection to call HandleAsync method on each handler
+            var handleMethod = handlerType.GetMethod(nameof(INotificationHandler<INotification>.HandleAsync));
+            if (handleMethod == null) continue;
+            var result = handleMethod.Invoke(handler, [notification, cancellationToken]);
+            if (result is Task task)
+            {
+                tasks.Add(task);
+            }
+        }
+        
+        await Task.WhenAll(tasks);
+    }
+
+    /// <inheritdoc />
     public async Task PublishAsync<TNotification>(TNotification notification, CancellationToken cancellationToken = default) where TNotification : INotification
     {
         ArgumentNullException.ThrowIfNull(notification);
